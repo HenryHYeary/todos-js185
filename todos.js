@@ -132,8 +132,10 @@ app.get("/lists/:todoListId", (req, res, next) => {
     next(new Error("Not found."));
   } else {
     res.render("list", {
-      todoList: todoList,
-      todos: sortTodos(todoList),
+      todoList,
+      todos: res.locals.store.sortedTodos(todoList),
+      isDoneTodoList: res.locals.store.isDoneTodoList(todoList),
+      hasUndoneTodos: res.locals.store.hasUndoneTodos(todoList)
     });
   }
 });
@@ -166,7 +168,7 @@ app.post("/lists/:todoListId/todos/:todoId/destroy", (req, res, next) => {
   if (!todoList) {
     next(new Error("Not found."));
   } else {
-    let todo = loadTodo(+todoListId, +todoId, req.session.todoLists);
+    let todo = res.locals.store.loadTodo(+todoListId, +todoId);
     if (!todo) {
       next(new Error("Not found."));
     } else {
@@ -180,7 +182,7 @@ app.post("/lists/:todoListId/todos/:todoId/destroy", (req, res, next) => {
 // Mark all todos as done
 app.post("/lists/:todoListId/complete_all", (req, res, next) => {
   let todoListId = req.params.todoListId;
-  let todoList = loadTodoList(+todoListId, req.session.todoLists);
+  let todoList = res.locals.session.loadTodoList(+todoListId);
   if (!todoList) {
     next(new Error("Not found."));
   } else {
@@ -202,7 +204,7 @@ app.post("/lists/:todoListId/todos",
   ],
   (req, res, next) => {
     let todoListId = req.params.todoListId;
-    let todoList = loadTodoList(+todoListId, req.session.todoLists);
+    let todoList = res.locals.session.loadTodoList(+todoListId);
     if (!todoList) {
       next(new Error("Not found."));
     } else {
@@ -229,7 +231,7 @@ app.post("/lists/:todoListId/todos",
 // Render edit todo list form
 app.get("/lists/:todoListId/edit", (req, res, next) => {
   let todoListId = req.params.todoListId;
-  let todoList = loadTodoList(+todoListId, req.session.todoLists);
+  let todoList = res.locals.session.loadTodoList(+todoListId);
   if (!todoList) {
     next(new Error("Not found."));
   } else {
@@ -270,7 +272,7 @@ app.post("/lists/:todoListId/edit",
   ],
   (req, res, next) => {
     let todoListId = req.params.todoListId;
-    let todoList = loadTodoList(+todoListId, req.session.todoLists);
+    let todoList = res.locals.session.loadTodoList(+todoListId);
     if (!todoList) {
       next(new Error("Not found."));
     } else {
