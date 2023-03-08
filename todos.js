@@ -4,11 +4,11 @@ const flash = require("express-flash");
 const session = require("express-session");
 const { body, validationResult } = require("express-validator");
 const TodoList = require("./lib/todolist");
-const Todo = require("./lib/todo");
-const { sortTodos } = require("./lib/sort");
+// const Todo = require("./lib/todo");
+// const { sortTodos } = require("./lib/sort");
 const store = require("connect-loki");
 const SessionPersistence = require("./lib/session-persistence");
-const { Session } = require("express-session");
+// const { Session } = require("express-session");
 
 const app = express();
 const host = "localhost";
@@ -100,13 +100,7 @@ app.post("/lists",
       .isLength({ min: 1 })
       .withMessage("The list title is required.")
       .isLength({ max: 100 })
-      .withMessage("List title must be between 1 and 100 characters.")
-      .custom((title, { req }) => {
-        let todoLists = req.session.todoLists;
-        let duplicate = todoLists.find(list => list.title === title);
-        return duplicate === undefined;
-      })
-      .withMessage("List title must be unique."),
+      .withMessage("List title must be between 1 and 100 characters."),
   ],
   (req, res) => {
     let errors = validationResult(req);
@@ -207,6 +201,8 @@ app.post("/lists/:todoListId/todos",
         res.render("list", {
           flash: req.flash(),
           todoList: todoList,
+          isDoneTodoList: res.locals.store.isDoneTodoList(todoList),
+          hasUndoneTodos: res.locals.store.hasUndoneTodos(todoList),
           todoTitle: req.body.todoTitle,
           todos: res.locals.store.sortedTodos(todoList),
         });
@@ -222,24 +218,23 @@ app.post("/lists/:todoListId/todos",
 // Render edit todo list form
 app.get("/lists/:todoListId/edit", (req, res, next) => {
   let todoListId = req.params.todoListId;
-  let todoList = res.locals.session.loadTodoList(+todoListId);
+  let todoList = res.locals.store.loadTodoList(+todoListId);
   if (!todoList) {
     next(new Error("Not found."));
   } else {
-    res.render("edit-list", { todoList });
+    res.render("edit-list", { 
+      todoList,
+     });
   }
 });
 
 // Delete todo list
 app.post("/lists/:todoListId/destroy", (req, res, next) => {
-  let todoLists = req.session.todoLists;
   let todoListId = +req.params.todoListId;
-  let index = todoLists.findIndex(todoList => todoList.id === todoListId);
-  if (index === -1) {
+  let deletedTodoList = res.locals.store.deleteTodoList(+todoListId);
+  if (deletedTodoList === undefined) {
     next(new Error("Not found."));
   } else {
-    todoLists.splice(index, 1);
-
     req.flash("success", "Todo list deleted.");
     res.redirect("/lists");
   }
@@ -253,18 +248,13 @@ app.post("/lists/:todoListId/edit",
       .isLength({ min: 1 })
       .withMessage("The list title is required.")
       .isLength({ max: 100 })
-      .withMessage("List title must be between 1 and 100 characters.")
-      .custom((title, { req }) => {
-        let todoLists = req.session.todoLists;
-        let duplicate = todoLists.find(list => list.title === title);
-        return duplicate === undefined;
-      })
-      .withMessage("List title must be unique."),
+      .withMessage("List title must be between 1 and 100 characters."),
   ],
   (req, res, next) => {
     let todoListId = req.params.todoListId;
-    let todoList = res.locals.session.loadTodoList(+todoListId);
-    if (!todoList) {
+    let editedTodoList = res.locals.store.editTodoList(+todoListId, req.body.todoListTitle);
+    let todoList = res.locals.store.loadTodoList(+todoListId);
+    if (!editedTodoList) {
       next(new Error("Not found."));
     } else {
       let errors = validationResult(req);
@@ -273,11 +263,10 @@ app.post("/lists/:todoListId/edit",
 
         res.render("edit-list", {
           flash: req.flash(),
-          todoListTitle: req.body.todoListTitle,
-          todoList: todoList,
+          todoList,
+          todoListTitle: todoList.title,
         });
       } else {
-        todoList.setTitle(req.body.todoListTitle);
         req.flash("success", "Todo list updated.");
         res.redirect(`/lists/${todoListId}`);
       }
