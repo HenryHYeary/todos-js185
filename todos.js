@@ -195,10 +195,11 @@ app.post("/lists/:todoListId/todos",
   (req, res, next) => {
     let todoTitle = req.body.todoTitle;
     let todoListId = req.params.todoListId;
-    let createdNewTodo = res.locals.store.createNewTodo(+todoListId, todoTitle);
-    if (createdNewTodo === undefined) {
+    let todoList = res.locals.store.loadTodoList(+todoListId);
+    if (!todoList) {
       next(new Error("Not found."));
     } else {
+      // need to improve error testing functionality
       let errors = validationResult(req);
       if (!errors.isEmpty()) {
         errors.array().forEach(message => req.flash("error", message.msg));
@@ -206,10 +207,11 @@ app.post("/lists/:todoListId/todos",
         res.render("list", {
           flash: req.flash(),
           todoList: todoList,
-          todos: sortTodos(todoList),
           todoTitle: req.body.todoTitle,
+          todos: res.locals.store.sortedTodos(todoList),
         });
       } else {
+        res.locals.store.createNewTodo(+todoListId, todoTitle);
         req.flash("success", "The todo has been created.");
         res.redirect(`/lists/${todoListId}`);
       }
