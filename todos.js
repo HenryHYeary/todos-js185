@@ -193,9 +193,10 @@ app.post("/lists/:todoListId/todos",
       .withMessage("Todo title must be between 1 and 100 characters."),
   ],
   (req, res, next) => {
+    let todoTitle = req.body.todoTitle;
     let todoListId = req.params.todoListId;
-    let todoList = res.locals.session.loadTodoList(+todoListId);
-    if (!todoList) {
+    let createdNewTodo = res.locals.store.createNewTodo(+todoListId, todoTitle);
+    if (createdNewTodo === undefined) {
       next(new Error("Not found."));
     } else {
       let errors = validationResult(req);
@@ -209,8 +210,6 @@ app.post("/lists/:todoListId/todos",
           todoTitle: req.body.todoTitle,
         });
       } else {
-        let todo = new Todo(req.body.todoTitle);
-        todoList.add(todo);
         req.flash("success", "The todo has been created.");
         res.redirect(`/lists/${todoListId}`);
       }
