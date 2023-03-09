@@ -102,16 +102,26 @@ app.post("/lists",
       .isLength({ max: 100 })
       .withMessage("List title must be between 1 and 100 characters."),
   ],
+
   (req, res) => {
+    let todoListTitle = req.body.todoListTitle;
     let errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      errors.array().forEach(message => req.flash("error", message.msg));
+
+    const rerenderNewList = () => {
       res.render("new-list", {
         flash: req.flash(),
         todoListTitle: req.body.todoListTitle,
       });
+    };
+
+    if (!errors.isEmpty()) {
+      errors.array().forEach(message => req.flash("error", message.msg));
+      rerenderNewList();
+    } else if (!res.locals.store.titleNotTaken(todoListTitle)){
+      req.flash('error', 'The list title must be unique.');
+      rerenderNewList();
     } else {
-      req.session.todoLists.push(new TodoList(req.body.todoListTitle));
+      res.locals.store.createNewTodoList(todoListTitle);
       req.flash("success", "The todo list has been created.");
       res.redirect("/lists");
     }
@@ -193,7 +203,6 @@ app.post("/lists/:todoListId/todos",
     if (!todoList) {
       next(new Error("Not found."));
     } else {
-      // need to improve error testing functionality
       let errors = validationResult(req);
       if (!errors.isEmpty()) {
         errors.array().forEach(message => req.flash("error", message.msg));
@@ -251,25 +260,35 @@ app.post("/lists/:todoListId/edit",
       .withMessage("List title must be between 1 and 100 characters."),
   ],
   (req, res, next) => {
+    let store = res.locals.store;
+    let todoListTitle = req.body.todoListTitle;
     let todoListId = req.params.todoListId;
-    let editedTodoList = res.locals.store.editTodoList(+todoListId, req.body.todoListTitle);
-    let todoList = res.locals.store.loadTodoList(+todoListId);
-    if (!editedTodoList) {
-      next(new Error("Not found."));
-    } else {
-      let errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        errors.array().forEach(message => req.flash("error", message.msg));
 
+    const rerenderList = () => {
+      let todoList = store.loadTodoList(+todoListId);
+      if (!todoList) {
+        next(new Error('Not found.'));
+      } else {
         res.render("edit-list", {
           flash: req.flash(),
-          todoList,
-          todoListTitle: todoList.title,
+          todoListTitle,
+          todoList
         });
-      } else {
-        req.flash("success", "Todo list updated.");
-        res.redirect(`/lists/${todoListId}`);
       }
+    };
+
+    let errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      errors.array().forEach(message => req.flash("error", message.msg));
+      rerenderList();
+    } else if (!store.titleNotTaken(todoListTitle)) {
+      req.flash('error', 'The list title must be unique.');
+      rerenderList();
+    } else if (!store.editTodoListTitle(+todoListId, todoListTitle) === undefined) {
+      next(new Error('Not found.'));
+    } else {
+      req.flash("success", "Todo list updated.");
+      res.redirect(`/lists/${todoListId}`);
     }
   }
 );
