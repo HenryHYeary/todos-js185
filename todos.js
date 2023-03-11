@@ -46,10 +46,30 @@ app.use((req, res, next) => {
   next();
 });
 
-// Redirect start page
+// Redirect start page to login
 app.get("/", (req, res) => {
-  res.redirect("/lists");
+  res.redirect("users/signin");
 });
+
+//Render sign-in page
+app.get("/users/signin", (req, res) => {
+  req.flash("info", "Please sign in.");
+  res.render("signin", {
+    flash: req.flash(),
+  })
+});
+
+// Redirect user to list of todo lists or reject credentials
+app.post("/users/signin", (req, res) => {
+  let username = req.body.username;
+  let password = req.body.password;
+  let store = res.locals.store;
+
+  if (store.isValidUsername(username) && store.isValidPassword(password)) {
+    res.redirect("/lists");
+    req.flash("success", "Welcome!");
+  }
+})
 
 // Render the list of todo lists
 app.get("/lists",
