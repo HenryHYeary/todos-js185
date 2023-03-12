@@ -60,16 +60,52 @@ app.get("/users/signin", (req, res) => {
 });
 
 // Redirect user to list of todo lists or reject credentials
-app.post("/users/signin", (req, res) => {
-  let username = req.body.username;
-  let password = req.body.password;
-  let store = res.locals.store;
+app.post("/users/signin", 
+  catchError((req, res) => {
+    let username = req.body.username.trim();
+    let password = req.body.password;
+    if (!username || !password) {
+      req.flash("error", "Please enter in a valid username and password.");
+      res.render("signin", {
+        username,
+        flash: req.flash(),
+      }) 
+    }
 
-  if (store.isValidUsername(username) && store.isValidPassword(password)) {
-    res.redirect("/lists");
-    req.flash("success", "Welcome!");
-  }
-})
+    if (username === 'admin' && password === 'secret') {
+      req.session.username = username;
+      req.session.signedIn = true;
+      req.flash("info", "Welcome!");
+      res.redirect("/lists");
+    } else {
+      req.flash("error", "Invalid credentials.")
+      res.render("signin", {
+        username,
+        flash: req.flash(),
+      });
+    }
+  })
+);
+
+// Store username and password in session store.
+app.get("users/signin",
+  catchError((req, res, next) => {
+    res.locals.username = req.session.username;
+    res.locals.password = req.session.password;
+    res.locals.flash = req.session.flash;
+    delete req.session.flash;
+    next();
+  })
+);
+
+// Sign out user and render login page
+app.get("/users/signout",
+  catchError((req, res) => {
+    delete res.locals.username;
+    delete res.locals.password;
+    res.redirect("users/signin");
+  })
+)
 
 // Render the list of todo lists
 app.get("/lists",
