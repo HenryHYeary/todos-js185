@@ -9,3 +9,8 @@ CREATE TABLE todos (
   done boolean NOT NULL DEFAULT false,
   todolist_id int REFERENCES todolists(id) ON DELETE CASCADE NOT NULL
 );
+
+CREATE TABLE users (
+  username text PRIMARY KEY,
+  password text NOT NULL
+);
